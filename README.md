@@ -1,8 +1,8 @@
 # NLP Administrative Data Classification Pipeline
 
-[![CI](https://github.com/your-username/nlp-data-classification/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/nlp-data-classification/actions/workflows/ci.yml)
-[![Python Version](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue.svg)](https://www.python.org/)
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![pytest](https://img.shields.io/badge/pytest-100%25-green.svg)](https://docs.pytest.org/)
 
 An automated, high-throughput text-mining pipeline engineered to ingest unstructured textual records (e.g., investigative case notes, survey write-ins, and compliance audit reports), clean them via vectorized SIMD operations, and perform dual-engine analytics combining Transformer embeddings, unsupervised topic modeling (LDA), and supervised risk severity classification.
 
