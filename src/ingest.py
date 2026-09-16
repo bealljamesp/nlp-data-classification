@@ -18,7 +18,7 @@ class RecordSchema(BaseModel):
 class ChunkedIngestionEngine:
     """
     Streams and validates large unstructured text datasets in memory-safe chunks
-    using Polars and pandas.
+    using pandas chunked iterators.
     """
 
     def __init__(self, file_path: Path, chunk_size: int = 10000) -> None:
@@ -30,14 +30,12 @@ class ChunkedIngestionEngine:
         Streams CSV data in memory-safe blocks, coercing types and validating
         schema compliance without loading the entire corpus into memory.
         """
-        # Utilize Polars / Pandas chunked iteration for low-overhead streaming
         for chunk in pd.read_csv(self.file_path, chunksize=self.chunk_size):
-            # Validate basic column existence
             if "text" not in chunk.columns or "record_id" not in chunk.columns:
                 raise ValueError(
                     "Source file missing required 'text' or 'record_id' columns."
                 )
 
-            # Drop nulls in critical text fields vectorized
+            # Drop nulls in critical text fields
             chunk = chunk.dropna(subset=["text"])
             yield chunk
