@@ -1,36 +1,38 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
-from src.embeddings import TextEmbeddingGenerator
 
 from src.clean import clean_text_series
+from src.embeddings import TextEmbeddingGenerator
+from src.evaluation import ModelEvaluator
+from src.ingest import ChunkedIngestionEngine
 from src.models import ComplianceClassifier, TopicModeler
 
 
 def run_pipeline() -> None:
     """
     Executes the end-to-end NLP administrative data classification pipeline,
-    enforcing C-contiguous memory layouts and vectorized data transformations.
+    streaming records via chunked ingestion and enforcing C-contiguous memory layouts.
     """
     print("[*] Initializing NLP Administrative Data Classification Pipeline...")
 
-    # 1. Ingest / Construct administrative records dataset
-    raw_data: pd.DataFrame = pd.DataFrame(
-        {
-            "record_id": [f"REC-{i:03d}" for i in range(1, 7)],
-            "text": [
-                "URGENT: Check https://example.com/audit for compliance fee leakage violations!!!",
-                "Investigation case note: routine transaction anomaly flagged under Section 404.",
-                "Survey feedback: operational risk exposure is increasing across branch networks.",
-                "Audit findings confirm severe exception logging failures in core database engine.",
-                "Minor variance noted in quarterly reconciliation reports, no immediate action.",
-                "Critical compliance breach detected regarding cross-border capital flow reporting.",
-            ],
-            "label": [1, 1, 0, 1, 0, 1],
-        }
-    )
+    file_path = Path("data/compliance_samples.csv")
+    if not file_path.exists():
+        raise FileNotFoundError(
+            f"Dataset not found at {file_path}. Please create the sample CSV first."
+        )
 
-    print(f"[*] Loaded corpus containing {len(raw_data)} records.")
+    # 1. Chunked Ingestion
+    print("[*] Streaming records via ChunkedIngestionEngine...")
+    ingestion_engine = ChunkedIngestionEngine(file_path=file_path, chunk_size=100)
+
+    chunks = list(ingestion_engine.stream_csv_chunks())
+    raw_data: pd.DataFrame = pd.concat(chunks, ignore_index=True)
+    print(
+        f"    -> Loaded corpus containing {len(raw_data)} records across {len(chunks)} chunk(s)."
+    )
 
     # 2. Vectorized Text Preprocessing (Anti-loop mandate enforced)
     print("[*] Executing vectorized text cleaning...")
@@ -51,15 +53,16 @@ def run_pipeline() -> None:
     doc_topics: NDArray[np.float64] = topic_modeler.fit_transform(cleaned_text.tolist())
     print(f"    -> Document-Topic Matrix  : {doc_topics.shape}")
 
-    # 5. Supervised Compliance Severity Classification Head
-    print("[*] Training supervised compliance classifier on dense embeddings...")
+    # 5. Supervised Compliance Classification & Cross-Validation Evaluation
+    print("[*] Evaluating classifier performance via stratified cross-validation...")
     y: NDArray[np.int64] = raw_data["label"].to_numpy(dtype=np.int64, copy=False)
     classifier = ComplianceClassifier()
-    classifier.fit(embeddings, y)
 
-    predictions: NDArray[np.int64] = classifier.predict(embeddings)
-    print(f"    -> Actual Labels          : {y}")
-    print(f"    -> Predicted Severity     : {predictions}")
+    evaluator = ModelEvaluator(n_splits=3)  # Small split for 6-record sample
+    metrics = evaluator.evaluate_cv(classifier, embeddings, y)
+    print(
+        f"    -> Mean CV Accuracy       : {metrics['mean_accuracy']:.2f} (±{metrics['std_accuracy']:.2f})"
+    )
     print("[+] Pipeline execution completed successfully.")
 
 
